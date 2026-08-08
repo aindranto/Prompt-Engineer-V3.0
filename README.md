@@ -1,20 +1,21 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Product Requirements Document (PRD)
 
-# Run and deploy your AI Studio app
+## 1. Visi Produk
+**Senior Prompt Engineer Expert V3.0** adalah platform web asisten interaktif multi-peran bertahap berbasis kecerdasan buatan (Gemini 3 Series) yang dirancang untuk membantu pengembang, prompt engineer, dan praktisi AI merancang *system instruction* dan *prompt* kelas industri yang spesifik, kokoh, dan siap pakai.
 
-This contains everything you need to run your app locally.
+## 2. Tujuan Bisnis & Nilai Tambah
+- **Akurasi Output AI**: Mengeliminasi prompt ambigu dan tidak terstruktur yang sering menghasilkan *AI hallucinations* atau output terpotong.
+- **Workflow Bertahap (Gated Workflow)**: Memastikan pengumpulan persyaratan melintasi pilar (Peran, Konteks, Batasan, Gaya Bahasa, Format) sebelum prompt final dibangkitkan.
+- **Eskalasi Multi-Peran**: Menggabungkan Peran Utama (Primary Role) dengan Peran Sekunder (Domain Expert) untuk cakupan konteks yang kaya dan relevan.
+- **Efisiensi Kerja**: Pengguna dapat menguji, mengubah temperatur, menyalin, mengunduh file `.txt` prompt final, serta melakukan *export/import* sesi percakapan dengan mudah.
 
-View your app in AI Studio: https://ai.studio/apps/0c369d26-7c29-4a83-a39d-cb6a5c47a4e1
+## 3. Masalah Utama yang Diselesaikan
+1. **Prompt Terpotong / Inkomplit**: AI sering memotong baris kode atau menyembunyikan logika dengan komentar `// TODO`. Aplikasi ini menerapkan aturan *Mandatory Single-Block Non-Truncation*.
+2. **Keterbatasan Format Jawaban**: Pengguna awam kesulitan menyusun batasan dan format yang konsisten. Aplikasi ini menyediakan opsi kartu interaktif yang dapat diklik (*Clickable Option Cards*).
+3. **Kehilangan Sesi Percakapan**: Riwayat percakapan kini dapat diekspor dan diimpor kembali dalam format `.json` berstandar V3.0.
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 4. Target Pengguna
+- AI Engineers & Prompt Engineers
+- Full-Stack Software Developers
+- Technical Product Managers & Enterprise Architects
+- Content Creators & AI Enthusiasts
