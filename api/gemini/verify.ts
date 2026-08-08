@@ -1,4 +1,4 @@
-import { verifyGeminiApiKey } from "../../src/server/geminiService";
+import { verifyGeminiApiKey } from "../../src/server/geminiService.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
