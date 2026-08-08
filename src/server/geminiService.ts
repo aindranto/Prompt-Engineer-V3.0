@@ -28,6 +28,14 @@ export function translateErrorMessage(errMsg: string): string {
     return "Batas kuota penggunaan API telah terlampaui (Rate Limit Exceeded) untuk model ini. Disarankan untuk mencoba mengganti Model Gemini lain di panel konfigurasi (misal: gemini-3.5-flash-lite), memasukkan API Key lain, atau mencoba kembali beberapa saat lagi.";
   }
   if (
+    lower.includes('payload too large') ||
+    lower.includes('413') ||
+    lower.includes('entity too large') ||
+    lower.includes('too large')
+  ) {
+    return "Ukuran payload data atau berkas lampiran terlalu besar untuk diproses server (Payload Too Large - 413). Silakan kurangi ukuran berkas gambar (maksimal 3MB per file) atau bersihkan sebagian riwayat percakapan.";
+  }
+  if (
     lower.includes('api key not valid') ||
     lower.includes('invalid') ||
     lower.includes('unauthenticated') ||
