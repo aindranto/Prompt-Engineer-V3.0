@@ -45,8 +45,10 @@ function runTests() {
     HARDCODED_SYSTEM_INSTRUCTION.includes("PERAN & IDENTITAS") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("reason-box") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("option-box") &&
+      HARDCODED_SYSTEM_INSTRUCTION.includes("BAHASA INDONESIA") &&
+      HARDCODED_SYSTEM_INSTRUCTION.includes("AI Image Generator") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("MANDATORY CODE BLOCK FENCING"),
-    "Test 4: Hardcoded System Instruction V3.0 contains required multi-role & option box rules"
+    "Test 4: Hardcoded System Instruction V3.0 contains required multi-role, option box & Bahasa Indonesia prompt rules"
   );
 
   console.log("------------------------------------------");
