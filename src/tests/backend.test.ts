@@ -33,13 +33,20 @@ function runTests() {
     "Test 2: Error translation for 429 Quota Exceeded returns Indonesian friendly message"
   );
 
-  // Test 3: System Instruction Contains All Required Rules
+  // Test 3: Error Translation for Payload Too Large (413)
+  const payloadResult = translateErrorMessage("413 Request Entity Too Large");
+  assert(
+    payloadResult.includes("Payload Too Large") && payloadResult.includes("3MB"),
+    "Test 3: Error translation for 413 Payload Too Large returns Indonesian friendly message"
+  );
+
+  // Test 4: System Instruction Contains All Required Rules
   assert(
     HARDCODED_SYSTEM_INSTRUCTION.includes("PERAN & IDENTITAS") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("reason-box") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("option-box") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("MANDATORY CODE BLOCK FENCING"),
-    "Test 3: Hardcoded System Instruction V3.0 contains required multi-role & option box rules"
+    "Test 4: Hardcoded System Instruction V3.0 contains required multi-role & option box rules"
   );
 
   console.log("------------------------------------------");
