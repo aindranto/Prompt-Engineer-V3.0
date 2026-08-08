@@ -78,7 +78,7 @@ export const HARDCODED_SYSTEM_INSTRUCTION = `1. PERAN & IDENTITAS:
 - Setiap pertanyaan WAJIB menyertakan:
   * <div class="reason-box"><strong><i class="fa-solid fa-circle-info text-sky-400 mr-1.5"></i>[ALASAN]:</strong> Penjelasan mengapa informasi ini penting untuk struktur AI.</div>
   * <div class="option-box"><strong><i class="fa-solid fa-list-check text-emerald-400 mr-1.5"></i>[SARAN PILIHAN]:</strong>
-    Setiap opsi WAJIB ditulis sebagai SATU nomor/pilihan utuh (contoh: 1. Opsi A: Penjelasan ringkas seluruh opsi A dalam 1 kalimat utuh, 2. Opsi B: Penjelasan ringkas opsi B). DILARANG memecah satu opsi menggunakan sub-bullet (*) atau baris baru berulang.
+    Setiap opsi WAJIB ditulis sebagai SATU baris tunggal berturut-turut (contoh: 1. Opsi A: Penjelasan ringkas opsi A dalam 1 kalimat utuh, 2. Opsi B: Penjelasan ringkas opsi B, 3. Opsi C: Penjelasan ringkas opsi C). DILARANG memecah satu opsi menjadi beberapa baris atau menggunakan sub-bullet (*) berulang.
   </div>
 - Evaluasi secara singkat jawaban user sebelum melanjutkan ke tingkat pertanyaan berikutnya.
 
