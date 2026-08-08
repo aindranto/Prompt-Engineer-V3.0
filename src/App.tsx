@@ -221,9 +221,15 @@ export default function App() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
+    const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB per file limit
+
     files.forEach((file) => {
-      if (file.size > 5 * 1024 * 1024) {
-        triggerToast(`Berkas ${file.name} melebihi batas 5MB!`, 'error');
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        triggerToast(
+          `Ukuran berkas "${file.name}" (${sizeMb} MB) melebihi batas 3 MB per file! Harap gunakan berkas yang lebih kecil agar tidak terjadi kesalahan server.`,
+          'error'
+        );
         return;
       }
 
@@ -374,6 +380,26 @@ export default function App() {
     const newUserMsg: ChatMessage = { role: 'user', parts };
     const updatedHistory = [...chatHistory, newUserMsg];
 
+    // Pre-check request payload size to prevent Vercel 413 Payload Too Large
+    const requestPayload = {
+      apiKey: apiKey.trim(),
+      model: model,
+      temperature: temperature,
+      contents: updatedHistory,
+      systemInstruction: HARDCODED_SYSTEM_INSTRUCTION,
+    };
+    const bodyString = JSON.stringify(requestPayload);
+    const bodySizeBytes = new Blob([bodyString]).size;
+    const bodySizeMb = bodySizeBytes / (1024 * 1024);
+
+    if (bodySizeBytes > 4.2 * 1024 * 1024) {
+      triggerToast(
+        `Ukuran total pesan & lampiran (${bodySizeMb.toFixed(2)} MB) melebihi batas server (4.2 MB). Silakan kurangi ukuran/jumlah berkas atau reset riwayat percakapan.`,
+        'error'
+      );
+      return;
+    }
+
     setChatHistory(updatedHistory);
     setUserInputText('');
     setAttachedFiles([]);
@@ -385,16 +411,26 @@ export default function App() {
       const res = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: apiKey.trim(),
-          model: model,
-          temperature: temperature,
-          contents: updatedHistory,
-          systemInstruction: HARDCODED_SYSTEM_INSTRUCTION,
-        }),
+        body: bodyString,
       });
 
-      const data = await res.json();
+      if (res.status === 413) {
+        const errMsg = 'Ukuran berkas/pesan terlalu besar (Payload Too Large - 413). Silakan unggah gambar lebih kecil (maksimal 3MB) atau reset riwayat percakapan.';
+        triggerToast(errMsg, 'error');
+        const errAiMsg: ChatMessage = {
+          role: 'model',
+          parts: [{ text: `⚠️ **[ERROR 413 - Payload Too Large]**\n\n${errMsg}` }],
+        };
+        setChatHistory((prev) => [...prev, errAiMsg]);
+        return;
+      }
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        data = { message: `Gagal memproses respon server (${res.status} ${res.statusText}).` };
+      }
 
       if (res.ok && data.status === 'ok' && data.text) {
         const aiResponseText = data.text;
@@ -593,7 +629,7 @@ export default function App() {
           <div className="shrink-0 sticky bottom-0 z-20 p-2.5 sm:p-3.5 bg-slate-900/95 backdrop-blur border-t border-slate-800 shadow-2xl">
             {/* File Preview Chips */}
             {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2 max-h-24 overflow-y-auto">
+              <div className="flex flex-wrap items-center gap-2 mb-2 max-h-24 overflow-y-auto">
                 {attachedFiles.map((fileObj) => (
                   <div
                     key={fileObj.id}
@@ -620,6 +656,27 @@ export default function App() {
                     </button>
                   </div>
                 ))}
+
+                <div className="text-[11px] text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-md font-mono flex items-center space-x-1">
+                  <span>Total Lampiran:</span>
+                  <span className="font-semibold text-sky-400">
+                    {(
+                      attachedFiles.reduce(
+                        (acc, f) =>
+                          acc +
+                          (f.base64
+                            ? Math.ceil(f.base64.length * 0.75)
+                            : f.textContent
+                            ? f.textContent.length
+                            : 0),
+                        0
+                      ) /
+                      (1024 * 1024)
+                    ).toFixed(2)}{' '}
+                    MB
+                  </span>
+                  <span className="text-slate-500">(Maks 3 MB/file)</span>
+                </div>
               </div>
             )}
 
@@ -734,7 +791,7 @@ export default function App() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="h-[44px] sm:h-[48px] px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-all flex items-center justify-center shrink-0 active:scale-95 cursor-pointer box-border"
-                title="Unggah Berkas/Gambar"
+                title="Unggah Berkas/Gambar (Maksimal 3MB per file)"
               >
                 <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
