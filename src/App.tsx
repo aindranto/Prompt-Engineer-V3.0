@@ -32,7 +32,7 @@ export default function App() {
   const [apiKey, setApiKey] = useState<string>('');
   const [storageType, setStorageType] = useState<'local' | 'session'>('local');
   const [model, setModel] = useState<string>('gemini-3.6-flash');
-  const [temperature, setTemperature] = useState<number>(0.7);
+  const [temperature, setTemperature] = useState<number>(0.1);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
