@@ -39,59 +39,91 @@ function escapeHtml(str: string): string {
 const extractOptions = (innerText: string): { num: string; text: string }[] => {
   const items: { num: string; text: string }[] = [];
 
+  const stripHtml = (htmlStr: string) => {
+    return htmlStr
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   // 1. Check if innerText contains <li> elements
   if (/<li[^>]*>/i.test(innerText)) {
     const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
     let liMatch: RegExpExecArray | null;
     let count = 1;
     while ((liMatch = liRegex.exec(innerText)) !== null) {
-      const content = liMatch[1].trim();
-      const numMatch = content.match(/^([1-9]\d*[\.\)]|Opsi\s+\d+[:\.]?)\s*(.*)/i);
+      const rawLi = liMatch[1].trim();
+      const cleanLi = stripHtml(rawLi);
+      if (!cleanLi) continue;
+
+      const numMatch = cleanLi.match(/^([1-9]\d*[\.\)]|Opsi\s+[A-Z0-9]+[:\.]?)\s*(.*)/i);
       if (numMatch) {
         items.push({ num: numMatch[1], text: numMatch[2].trim() });
       } else {
-        items.push({ num: `${count}.`, text: content });
+        items.push({ num: `${count}.`, text: cleanLi });
       }
       count++;
     }
     if (items.length > 0) return items;
   }
 
-  // Clean out block tags first, preserving inline formatting tags (em, strong, etc.)
-  const cleanText = innerText
+  // 2. Line-by-line parsing: Replace block tag boundaries with newlines
+  const textWithNewlines = innerText
     .replace(/^:?\s*/, '')
-    .replace(/<\/?(?:p|div|ul|ol)[^>]*>/gi, ' ')
-    .trim();
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, '\n')
+    .replace(/<(?:p|div|ul|ol|li|table|tr)[^>]*>/gi, '\n');
 
-  // 2. Strictly match numbered items like "1. ", "2. ", "3. " or "1) ", "2) "
-  const numberedItemRegex = /(\b[1-9]\d*[\.\)])\s*([\s\S]+?)(?=(?:\b[1-9]\d*[\.\)]|$))/gi;
-  let numMatch: RegExpExecArray | null;
+  const rawLines = textWithNewlines.split('\n');
 
-  while ((numMatch = numberedItemRegex.exec(cleanText)) !== null) {
-    const num = numMatch[1].trim();
-    let text = numMatch[2].trim();
-    text = text.replace(/<br\s*\/?>/gi, ' ').trim();
+  let currentItem: { num: string; text: string } | null = null;
+  let counter = 1;
 
-    if (text) {
-      items.push({ num, text });
+  for (const line of rawLines) {
+    let cleanLine = stripHtml(line);
+    if (!cleanLine) continue;
+
+    // Remove leading header label if line contains [SARAN PILIHAN]
+    cleanLine = cleanLine.replace(/^\[(?:SARAN PILIHAN|OPSI PILIHAN|REKOMENDASI PILIHAN|PILIKAN)\]:?\s*/i, '').trim();
+    if (!cleanLine) continue;
+
+    // A line starts a new option ONLY if it begins at start of line with a list marker:
+    // "1.", "2)", "Opsi A:", "Opsi 1:", "-", "*", "•"
+    const markerMatch = cleanLine.match(/^([1-9]\d*[\.\)]|Opsi\s+[A-Z0-9]+[:\.]?|[-*•])\s*(.*)/i);
+
+    if (markerMatch) {
+      if (currentItem && currentItem.text) {
+        items.push(currentItem);
+      }
+
+      let numStr = markerMatch[1].trim();
+      const textStr = markerMatch[2].trim();
+
+      if (/^[-*•]$/.test(numStr)) {
+        numStr = `${counter}.`;
+      }
+
+      currentItem = {
+        num: numStr,
+        text: textStr,
+      };
+      counter++;
+    } else {
+      if (currentItem) {
+        currentItem.text += ' ' + cleanLine;
+      } else {
+        currentItem = {
+          num: `${counter}.`,
+          text: cleanLine,
+        };
+        counter++;
+      }
     }
   }
 
-  // 3. Fallback: If no "1. 2. 3." pattern was found, try line-by-line split
-  if (items.length === 0) {
-    const lines = cleanText
-      .split(/\n|<br\s*\/?>/i)
-      .map((l) => l.replace(/<[^>]+>/g, '').trim())
-      .filter((l) => l.length > 2);
-
-    lines.forEach((line, idx) => {
-      const matchNum = line.match(/^([1-9]\d*[\.\)]|Opsi\s+\d+[:\.]?)\s*(.*)/i);
-      if (matchNum) {
-        items.push({ num: matchNum[1], text: matchNum[2] });
-      } else {
-        items.push({ num: `${idx + 1}.`, text: line });
-      }
-    });
+  if (currentItem && currentItem.text) {
+    items.push(currentItem);
   }
 
   return items;
@@ -124,7 +156,8 @@ const parseAndTransformOptionAndReasonBoxes = (html: string): string => {
   );
 
   // 2. Transform Option Boxes (<div class="option-box"> or [SARAN PILIHAN] / [OPSI PILIHAN])
-  const optionBlockRegex = /(?:<div class="option-box">|<p>)\s*(?:<strong>|<b>)?\s*(?:<i[^>]*><\/i>)?\s*\[(?:SARAN PILIHAN|OPSI PILIHAN|REKOMENDASI PILIHAN|PILIKAN)\]:?\s*(?:<\/strong>|<\/b>)?([\s\S]*?)(?:<\/div>|<\/p>|(?=<h[1-6]|<div class="reason-box"|$))/gi;
+  const optionBlockRegex =
+    /(?:<div class="option-box">|<p>)?\s*(?:<strong>|<b>)?\s*(?:<i[^>]*><\/i>)?\s*\[(?:SARAN PILIHAN|OPSI PILIHAN|REKOMENDASI PILIHAN|PILIKAN)\]:?\s*(?:<\/strong>|<\/b>)?([\s\S]*?)(?=(?:<p>)?\s*(?:<strong>|<b>)?\s*\[(?:ALASAN|SARAN PILIHAN|OPSI PILIHAN)\]|<h[1-6]|<div class="reason-box"|<div class="code-block-wrapper"|PHCODEBLOCKTOKEN|$)/gi;
 
   result = result.replace(optionBlockRegex, (match, innerText) => {
     if (!innerText || !innerText.trim()) return match;
