@@ -1,0 +1,6 @@
+{
+  "name": "Senior Prompt Engineer Expert",
+  "description": "Aplikasi asisten interaktif multi-peran bertahap untuk merancang prompt AI kelas industri yang kokoh dan terstruktur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
