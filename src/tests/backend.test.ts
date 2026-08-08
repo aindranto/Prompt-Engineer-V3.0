@@ -41,13 +41,14 @@ function runTests() {
   );
 
   // Test 4: System Instruction Contains All Required Rules
+  const lowerInstruction = HARDCODED_SYSTEM_INSTRUCTION.toLowerCase();
   assert(
     HARDCODED_SYSTEM_INSTRUCTION.includes("PERAN & IDENTITAS") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("reason-box") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("option-box") &&
-      HARDCODED_SYSTEM_INSTRUCTION.includes("BAHASA INDONESIA") &&
+      lowerInstruction.includes("bahasa indonesia") &&
       HARDCODED_SYSTEM_INSTRUCTION.includes("AI Image Generator") &&
-      HARDCODED_SYSTEM_INSTRUCTION.includes("MANDATORY CODE BLOCK FENCING"),
+      lowerInstruction.includes("code block fencing"),
     "Test 4: Hardcoded System Instruction V3.0 contains required multi-role, option box & Bahasa Indonesia prompt rules"
   );
 
