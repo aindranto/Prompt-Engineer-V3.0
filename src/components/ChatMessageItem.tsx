@@ -36,6 +36,143 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+const extractOptions = (innerText: string): { num: string; text: string }[] => {
+  const items: { num: string; text: string }[] = [];
+
+  // 1. Check if innerText contains <li> elements
+  if (/<li[^>]*>/i.test(innerText)) {
+    const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    let liMatch: RegExpExecArray | null;
+    let count = 1;
+    while ((liMatch = liRegex.exec(innerText)) !== null) {
+      const content = liMatch[1].trim();
+      const numMatch = content.match(/^([1-9]\d*[\.\)]|Opsi\s+\d+[:\.]?)\s*(.*)/i);
+      if (numMatch) {
+        items.push({ num: numMatch[1], text: numMatch[2].trim() });
+      } else {
+        items.push({ num: `${count}.`, text: content });
+      }
+      count++;
+    }
+    if (items.length > 0) return items;
+  }
+
+  // Clean out block tags first, preserving inline formatting tags (em, strong, etc.)
+  const cleanText = innerText
+    .replace(/^:?\s*/, '')
+    .replace(/<\/?(?:p|div|ul|ol)[^>]*>/gi, ' ')
+    .trim();
+
+  // 2. Strictly match numbered items like "1. ", "2. ", "3. " or "1) ", "2) "
+  const numberedItemRegex = /(\b[1-9]\d*[\.\)])\s*([\s\S]+?)(?=(?:\b[1-9]\d*[\.\)]|$))/gi;
+  let numMatch: RegExpExecArray | null;
+
+  while ((numMatch = numberedItemRegex.exec(cleanText)) !== null) {
+    const num = numMatch[1].trim();
+    let text = numMatch[2].trim();
+    text = text.replace(/<br\s*\/?>/gi, ' ').trim();
+
+    if (text) {
+      items.push({ num, text });
+    }
+  }
+
+  // 3. Fallback: If no "1. 2. 3." pattern was found, try line-by-line split
+  if (items.length === 0) {
+    const lines = cleanText
+      .split(/\n|<br\s*\/?>/i)
+      .map((l) => l.replace(/<[^>]+>/g, '').trim())
+      .filter((l) => l.length > 2);
+
+    lines.forEach((line, idx) => {
+      const matchNum = line.match(/^([1-9]\d*[\.\)]|Opsi\s+\d+[:\.]?)\s*(.*)/i);
+      if (matchNum) {
+        items.push({ num: matchNum[1], text: matchNum[2] });
+      } else {
+        items.push({ num: `${idx + 1}.`, text: line });
+      }
+    });
+  }
+
+  return items;
+};
+
+const parseAndTransformOptionAndReasonBoxes = (html: string): string => {
+  if (!html) return '';
+
+  let result = html;
+
+  // 1. Transform Reason Box ([ALASAN])
+  result = result.replace(
+    /(?:<p>)?(?:<div class="reason-box">)?\s*(?:<strong>|<b>)?\s*(?:<i[^>]*><\/i>)?\s*\[ALASAN\]:?\s*(?:<\/strong>|<\/b>)?([\s\S]*?)(?:<\/div>|(?=<\/p>|<p>|<div|$))/gi,
+    (_match, content) => {
+      const cleanContent = content
+        .replace(/^<\/strong>|^<\/b>/i, '')
+        .replace(/<\/div>$/, '')
+        .trim();
+
+      return `
+        <div class="reason-box my-3 p-3.5 bg-sky-950/30 border-l-4 border-sky-500 rounded-xl text-sky-100 shadow-sm leading-relaxed text-xs sm:text-sm">
+          <div class="font-bold text-sky-400 mb-1 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info shrink-0 text-sky-400"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>[ALASAN]</span>
+          </div>
+          <div class="text-slate-200">${cleanContent}</div>
+        </div>
+      `;
+    }
+  );
+
+  // 2. Transform Option Boxes (<div class="option-box"> or [SARAN PILIHAN] / [OPSI PILIHAN])
+  const optionBlockRegex = /(?:<div class="option-box">|<p>)\s*(?:<strong>|<b>)?\s*(?:<i[^>]*><\/i>)?\s*\[(?:SARAN PILIHAN|OPSI PILIHAN|REKOMENDASI PILIHAN|PILIKAN)\]:?\s*(?:<\/strong>|<\/b>)?([\s\S]*?)(?:<\/div>|<\/p>|(?=<h[1-6]|<div class="reason-box"|$))/gi;
+
+  result = result.replace(optionBlockRegex, (match, innerText) => {
+    if (!innerText || !innerText.trim()) return match;
+
+    // If already converted with option-click-hint
+    if (innerText.includes('option-click-hint')) {
+      return `<div class="option-box my-3.5 p-3.5 sm:p-4 bg-emerald-950/20 border-l-4 border-emerald-500 rounded-2xl shadow-md">${innerText}</div>`;
+    }
+
+    const items = extractOptions(innerText);
+
+    if (items.length === 0) {
+      return match;
+    }
+
+    const itemsHtml = items
+      .map(
+        (item) => `
+      <li class="option-item flex items-start justify-between gap-3 p-3 my-1.5 rounded-xl bg-slate-900/90 hover:bg-emerald-950/50 border border-emerald-500/30 hover:border-emerald-400/70 text-slate-100 cursor-pointer transition-all hover:-translate-y-0.5 shadow-sm active:scale-[0.99] group">
+        <div class="option-content min-w-0 flex-1 leading-relaxed text-xs sm:text-sm">
+          <strong class="text-emerald-400 font-bold mr-1.5">${item.num}</strong>
+          <span class="text-slate-200">${item.text}</span>
+        </div>
+        <span class="option-click-hint bg-emerald-500/20 text-emerald-300 group-hover:bg-emerald-500/30 group-hover:text-emerald-200 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap shrink-0 flex items-center gap-1 border border-emerald-500/30 transition-colors">
+          <span>Klik Pilih</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+      </li>
+    `
+      )
+      .join('');
+
+    return `
+      <div class="option-box my-3.5 p-3.5 sm:p-4 bg-emerald-950/20 border-l-4 border-emerald-500 rounded-2xl shadow-md">
+        <div class="option-box-header mb-2.5 font-bold text-emerald-400 text-xs sm:text-sm flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-checks shrink-0 text-emerald-400"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+          <span>[SARAN PILIHAN] — Klik salah satu opsi di bawah untuk memilih:</span>
+        </div>
+        <ul class="option-list space-y-2 p-0 m-0 list-none">
+          ${itemsHtml}
+        </ul>
+      </div>
+    `;
+  });
+
+  return result;
+};
+
 const formatAiMessageHtml = (text: string) => {
   if (!text) return '';
 
@@ -72,7 +209,10 @@ const formatAiMessageHtml = (text: string) => {
   // 3. Parse with marked
   let html = marked.parse(processed) as string;
 
-  // 4. Replace placeholders with clean, unnested code block wrappers
+  // 4. Transform Option & Reason Boxes
+  html = parseAndTransformOptionAndReasonBoxes(html);
+
+  // 5. Replace placeholders with clean, unnested code block wrappers
   codeBlocks.forEach((item, idx) => {
     const placeholderRegex = new RegExp(`(?:<p>)?PHCODEBLOCKTOKENX${idx}XPHCODEBLOCKTOKEN(?:<\/p>)?`, 'g');
     const headerTitle = item.isPrompt ? 'MARKDOWN PROMPT' : (item.lang || 'CODE').toUpperCase();
@@ -148,7 +288,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     // 1. Option box click handlers
     const optionBoxes = containerRef.current.querySelectorAll('.option-box');
     optionBoxes.forEach((box) => {
-      const listItems = box.querySelectorAll('li');
+      const listItems = box.querySelectorAll('li, .option-item');
       listItems.forEach((li) => {
         const newLi = li.cloneNode(true) as HTMLElement;
         li.parentNode?.replaceChild(newLi, li);
@@ -162,6 +302,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           if (hint) {
             text = text.replace((hint as HTMLElement).innerText, '').trim();
           }
+          text = text.replace(/\[SARAN PILIHAN\][^\n:]*:?/gi, '').trim();
           text = text.trim();
           if (text) {
             onSelectOption(text);
